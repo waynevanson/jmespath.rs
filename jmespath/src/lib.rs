@@ -114,12 +114,12 @@ use lazy_static::*;
 use crate::ast::Ast;
 use crate::interpreter::{interpret, SearchResult};
 
-mod errors;
-mod interpreter;
-mod lexer;
-mod parser;
-mod runtime;
-mod variable;
+pub mod errors;
+pub mod interpreter;
+pub mod lexer;
+pub mod parser;
+pub mod runtime;
+pub mod variable;
 
 lazy_static! {
     pub static ref DEFAULT_RUNTIME: Runtime = {
