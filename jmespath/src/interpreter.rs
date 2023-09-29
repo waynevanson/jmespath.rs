@@ -11,16 +11,17 @@ use super::{ErrorReason, JmespathError, Rcvar, RuntimeError};
 pub type SearchResult = Result<Rcvar, JmespathError>;
 
 /// Interprets the given data using an AST node.
-pub fn interpret(data: &Rcvar, node: &Ast, ctx: &mut Context<'_>) -> SearchResult {
+pub fn interpret(initial: &Rcvar, data: &Rcvar, node: &Ast, ctx: &mut Context<'_>) -> SearchResult {
     match *node {
         Ast::Field { ref name, .. } => Ok(data.get_field(name)),
         Ast::Subexpr {
             ref lhs, ref rhs, ..
         } => {
-            let left_result = interpret(data, lhs, ctx)?;
-            interpret(&left_result, rhs, ctx)
+            let left_result = interpret(initial, data, lhs, ctx)?;
+            interpret(initial, &left_result, rhs, ctx)
         }
         Ast::Identity { .. } => Ok(data.clone()),
+        Ast::Root { .. } => Ok(initial.clone()),
         Ast::Literal { ref value, .. } => Ok(value.clone()),
         Ast::Index { idx, .. } => {
             if idx >= 0 {
@@ -32,25 +33,25 @@ pub fn interpret(data: &Rcvar, node: &Ast, ctx: &mut Context<'_>) -> SearchResul
         Ast::Or {
             ref lhs, ref rhs, ..
         } => {
-            let left = interpret(data, lhs, ctx)?;
+            let left = interpret(initial, data, lhs, ctx)?;
             if left.is_truthy() {
                 Ok(left)
             } else {
-                interpret(data, rhs, ctx)
+                interpret(initial, data, rhs, ctx)
             }
         }
         Ast::And {
             ref lhs, ref rhs, ..
         } => {
-            let left = interpret(data, lhs, ctx)?;
+            let left = interpret(initial, data, lhs, ctx)?;
             if !left.is_truthy() {
                 Ok(left)
             } else {
-                interpret(data, rhs, ctx)
+                interpret(initial, data, rhs, ctx)
             }
         }
         Ast::Not { ref node, .. } => {
-            let result = interpret(data, node, ctx)?;
+            let result = interpret(initial, data, node, ctx)?;
             Ok(Rcvar::new(Variable::Bool(!result.is_truthy())))
         }
         // Returns the resut of RHS if cond yields truthy value.
@@ -59,9 +60,9 @@ pub fn interpret(data: &Rcvar, node: &Ast, ctx: &mut Context<'_>) -> SearchResul
             ref then,
             ..
         } => {
-            let cond_result = interpret(data, predicate, ctx)?;
+            let cond_result = interpret(initial, data, predicate, ctx)?;
             if cond_result.is_truthy() {
-                interpret(data, then, ctx)
+                interpret(initial, data, then, ctx)
             } else {
                 Ok(Rcvar::new(Variable::Null))
             }
@@ -72,8 +73,8 @@ pub fn interpret(data: &Rcvar, node: &Ast, ctx: &mut Context<'_>) -> SearchResul
             ref rhs,
             ..
         } => {
-            let left = interpret(data, lhs, ctx)?;
-            let right = interpret(data, rhs, ctx)?;
+            let left = interpret(initial, data, lhs, ctx)?;
+            let right = interpret(initial, data, rhs, ctx)?;
             Ok(left
                 .compare(comparator, &*right)
                 .map_or(Rcvar::new(Variable::Null), |result| {
@@ -82,7 +83,7 @@ pub fn interpret(data: &Rcvar, node: &Ast, ctx: &mut Context<'_>) -> SearchResul
         }
         // Converts an object into a JSON array of its values.
         Ast::ObjectValues { ref node, .. } => {
-            let subject = interpret(data, node, ctx)?;
+            let subject = interpret(initial, data, node, ctx)?;
             match *subject {
                 Variable::Object(ref v) => Ok(Rcvar::new(Variable::Array(
                     v.values().cloned().collect::<Vec<Rcvar>>(),
@@ -94,12 +95,12 @@ pub fn interpret(data: &Rcvar, node: &Ast, ctx: &mut Context<'_>) -> SearchResul
         // each node of lhs that passes through rhs yields a non-null value.
         Ast::Projection {
             ref lhs, ref rhs, ..
-        } => match interpret(data, lhs, ctx)?.as_array() {
+        } => match interpret(initial, data, lhs, ctx)?.as_array() {
             None => Ok(Rcvar::new(Variable::Null)),
             Some(left) => {
                 let mut collected = vec![];
                 for element in left {
-                    let current = interpret(element, rhs, ctx)?;
+                    let current = interpret(initial, element, rhs, ctx)?;
                     if !current.is_null() {
                         collected.push(current);
                     }
@@ -107,7 +108,7 @@ pub fn interpret(data: &Rcvar, node: &Ast, ctx: &mut Context<'_>) -> SearchResul
                 Ok(Rcvar::new(Variable::Array(collected)))
             }
         },
-        Ast::Flatten { ref node, .. } => match interpret(data, node, ctx)?.as_array() {
+        Ast::Flatten { ref node, .. } => match interpret(initial, data, node, ctx)?.as_array() {
             None => Ok(Rcvar::new(Variable::Null)),
             Some(a) => {
                 let mut collected: Vec<Rcvar> = vec![];
@@ -126,7 +127,7 @@ pub fn interpret(data: &Rcvar, node: &Ast, ctx: &mut Context<'_>) -> SearchResul
             } else {
                 let mut collected = vec![];
                 for node in elements {
-                    collected.push(interpret(data, node, ctx)?);
+                    collected.push(interpret(initial, data, node, ctx)?);
                 }
                 Ok(Rcvar::new(Variable::Array(collected)))
             }
@@ -137,7 +138,7 @@ pub fn interpret(data: &Rcvar, node: &Ast, ctx: &mut Context<'_>) -> SearchResul
             } else {
                 let mut collected = BTreeMap::new();
                 for kvp in elements {
-                    let value = interpret(data, &kvp.value, ctx)?;
+                    let value = interpret(initial, data, &kvp.value, ctx)?;
                     collected.insert(kvp.key.clone(), value);
                 }
                 Ok(Rcvar::new(Variable::Object(collected)))
@@ -150,7 +151,7 @@ pub fn interpret(data: &Rcvar, node: &Ast, ctx: &mut Context<'_>) -> SearchResul
         } => {
             let mut fn_args: Vec<Rcvar> = vec![];
             for arg in args {
-                fn_args.push(interpret(data, arg, ctx)?);
+                fn_args.push(interpret(initial, data, arg, ctx)?);
             }
             // Reset the offset so that it points to the function being evaluated.
             ctx.offset = offset;

@@ -395,7 +395,8 @@ impl<'a> Expression<'a> {
     /// deserialization, so it can easily be marshalled to another type.
     pub fn search<T: ToJmespath>(&self, data: T) -> SearchResult {
         let mut ctx = Context::new(&self.expression, self.runtime);
-        interpret(&data.to_jmespath()?, &self.ast, &mut ctx)
+        let rcvar = data.to_jmespath()?;
+        interpret(&rcvar, &rcvar, &self.ast, &mut ctx)
     }
 
     /// Returns the JMESPath expression from which the Expression was compiled.

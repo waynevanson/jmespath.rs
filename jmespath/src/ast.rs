@@ -49,6 +49,10 @@ pub enum Ast {
         /// Approximate absolute position in the parsed expression.
         offset: usize,
     },
+    Root {
+        /// Approximate absolute position in the parsed expression.
+        offset: usize,
+    },
     /// Used by functions to dynamically evaluate argument values.
     Expref {
         /// Approximate absolute position in the parsed expression.

@@ -258,7 +258,7 @@ macro_rules! min_and_max_by {
             )
         })?;
         // Map over the first value to get the homogeneous required return type
-        let initial = interpret(&vals[0], &ast, $ctx)?;
+        let initial = interpret(&vals[0], &vals[0], &ast, $ctx)?;
         let entered_type = initial.get_type();
         if entered_type != JmespathType::String && entered_type != JmespathType::Number {
             return Err(JmespathError::from_ctx(
@@ -274,7 +274,7 @@ macro_rules! min_and_max_by {
         // Map over each value, finding the best candidate value and fail on error.
         let mut candidate = (vals[0].clone(), initial.clone());
         for (invocation, v) in vals.iter().enumerate().skip(1) {
-            let mapped = interpret(v, &ast, $ctx)?;
+            let mapped = interpret(v, v, &ast, $ctx)?;
             if mapped.get_type() != entered_type {
                 return Err(JmespathError::from_ctx(
                     $ctx,
@@ -567,7 +567,7 @@ impl Function for MapFn {
         })?;
         let mut results = vec![];
         for value in values {
-            results.push(interpret(value, ast, ctx)?);
+            results.push(interpret(value, value, ast, ctx)?);
         }
         Ok(Rcvar::new(Variable::Array(results)))
     }
@@ -728,7 +728,7 @@ impl Function for SortByFn {
             )
         })?;
         let mut mapped: Vec<(Rcvar, Rcvar)> = vec![];
-        let first_value = interpret(&vals[0], ast, ctx)?;
+        let first_value = interpret(&vals[0], &vals[0], ast, ctx)?;
         let first_type = first_value.get_type();
         if first_type != JmespathType::String && first_type != JmespathType::Number {
             let reason = ErrorReason::Runtime(RuntimeError::InvalidReturnType {
@@ -741,7 +741,7 @@ impl Function for SortByFn {
         }
         mapped.push((vals[0].clone(), first_value));
         for (invocation, v) in vals.iter().enumerate().skip(1) {
-            let mapped_value = interpret(v, ast, ctx)?;
+            let mapped_value = interpret(v, v, ast, ctx)?;
             if mapped_value.get_type() != first_type {
                 return Err(JmespathError::from_ctx(
                     ctx,

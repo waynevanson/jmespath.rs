@@ -104,6 +104,7 @@ impl<'a> Parser<'a> {
         let (offset, token) = self.advance_with_pos();
         match token {
             Token::At => Ok(Ast::Identity { offset }),
+            Token::Dollar => Ok(Ast::Root { offset }),
             Token::Identifier(value) => Ok(Ast::Field {
                 name: value,
                 offset,

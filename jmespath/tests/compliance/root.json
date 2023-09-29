@@ -1,0 +1,22 @@
+[
+  {
+    "given": { "hello": "world" },
+    "cases": [
+      {
+        "expression": "$",
+        "result": { "hello": "world" }
+      },
+      {
+        "expression": "{ say: $ }",
+        "result": { "say": { "hello": "world" } }
+      },
+      {
+        "expression": "hello | { yo: @, whatup: $ }",
+        "result": {
+          "yo": "world",
+          "whatup": { "hello": "world" }
+        }
+      }
+    ]
+  }
+]

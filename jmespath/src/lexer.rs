@@ -22,6 +22,7 @@ pub enum Token {
     Number(i32),
     Literal(Rcvar),
     Dot,
+    Dollar,
     Star,
     Flatten,
     And,
@@ -115,6 +116,7 @@ impl<'a> Lexer<'a> {
                         '*' => tokens.push_back((pos, Star)),
                         '|' => tokens.push_back((pos, self.alt('|', Or, Pipe))),
                         '@' => tokens.push_back((pos, At)),
+                        '$' => tokens.push_back((pos, Dollar)),
                         ']' => tokens.push_back((pos, Rbracket)),
                         '{' => tokens.push_back((pos, Lbrace)),
                         '}' => tokens.push_back((pos, Rbrace)),
@@ -327,6 +329,7 @@ mod tests {
         assert_eq!(tokenize_queue("."), vec![(0, Dot), (1, Eof)]);
         assert_eq!(tokenize_queue("*"), vec![(0, Star), (1, Eof)]);
         assert_eq!(tokenize_queue("@"), vec![(0, At), (1, Eof)]);
+        assert_eq!(tokenize_queue("$"), vec![(0, Dollar), (1, Eof)]);
         assert_eq!(tokenize_queue("]"), vec![(0, Rbracket), (1, Eof)]);
         assert_eq!(tokenize_queue("{"), vec![(0, Lbrace), (1, Eof)]);
         assert_eq!(tokenize_queue("}"), vec![(0, Rbrace), (1, Eof)]);
